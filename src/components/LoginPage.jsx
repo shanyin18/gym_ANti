@@ -7,10 +7,12 @@ const LoginPage = ({ onLogin }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
 
         const endpoint = isRegistering ? '/api/register' : '/api/login';
 
@@ -27,9 +29,9 @@ const LoginPage = ({ onLogin }) => {
                 throw new Error(data.error || '操作失败');
             }
 
-            if (isRegister) {
+            if (isRegistering) {
                 setError('注册成功！请登录');
-                setIsRegister(false);
+                setIsRegistering(false);
                 setPassword('');
             } else {
                 // Login success
@@ -153,14 +155,14 @@ const LoginPage = ({ onLogin }) => {
                             boxShadow: '0 4px 12px rgba(3, 155, 229, 0.3)'
                         }}
                     >
-                        {loading ? '处理中...' : (isRegister ? '注册' : '登录')}
+                        {loading ? '处理中...' : (isRegistering ? '注册' : '登录')}
                     </button>
                 </form>
 
                 <div style={{ textAlign: 'center', marginTop: '20px' }}>
                     <button
                         onClick={() => {
-                            setIsRegister(!isRegister);
+                            setIsRegistering(!isRegistering);
                             setError('');
                         }}
                         style={{
@@ -172,7 +174,7 @@ const LoginPage = ({ onLogin }) => {
                             textDecoration: 'underline'
                         }}
                     >
-                        {isRegister ? '已有账号？去登录' : '没有账号？去注册'}
+                        {isRegistering ? '已有账号？去登录' : '没有账号？去注册'}
                     </button>
                 </div>
             </div>

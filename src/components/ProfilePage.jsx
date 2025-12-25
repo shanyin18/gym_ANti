@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE_URL from '../config';
 
 const ProfilePage = ({ authToken, onClose, onUpdate }) => {
     const [formData, setFormData] = useState({
@@ -98,7 +99,7 @@ const ProfilePage = ({ authToken, onClose, onUpdate }) => {
                 daily_protein: protein
             };
 
-            const res = await fetch('http://localhost:3000/api/profile', {
+            const res = await fetch(`${API_BASE_URL}/api/profile`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
