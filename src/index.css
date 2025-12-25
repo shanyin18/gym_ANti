@@ -1,0 +1,59 @@
+:root {
+  --bg-color: #e0f7fa;
+  --text-primary: #01579b;
+  /* Deep Ocean Blue */
+  --accent-color: #00e5ff;
+  /* Bright Cyan */
+  --card-bg: rgba(255, 255, 255, 0.4);
+  /* Glass Effect */
+  --border-color: rgba(255, 255, 255, 0.5);
+  --glow-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  --font-family: 'Start 2P', 'Courier New', monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  overflow: hidden;
+  /* Important for 3D canvas */
+}
+
+
+/* Glassmorphism Utilities - Make sure these assume light background */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+}
+
+.app-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Ensure chat interface (children of app-container) sits above background */
+.app-container>div:not(:first-child) {
+  position: relative;
+  z-index: 10;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 188, 212, 0.5);
+  border-radius: 10px;
+}
