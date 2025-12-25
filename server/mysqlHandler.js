@@ -23,6 +23,7 @@ export const initDB = async () => {
     try {
         const [rows] = await pool.query('SELECT 1');
         console.log('✅ MySQL Database Connected Successfully');
+        console.log('🔒 SSL Connection:', process.env.DB_HOST !== 'localhost' ? 'Enabled' : 'Disabled');
         return true;
     } catch (error) {
         console.error('❌ MySQL Connection Failed:', error.message);
