@@ -6,7 +6,7 @@ dotenv.config();
 
 // Initialize OpenAI client for Doubao
 const client = new OpenAI({
-  apiKey: "fb6a0164-f93d-42eb-9647-fcdeffcf6ef5",
+  apiKey: process.env.DOUBAO_API_KEY,
   baseURL: "https://ark.cn-beijing.volces.com/api/v3",
 });
 
