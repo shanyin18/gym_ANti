@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 
+import API_BASE_URL from '../config';
+
 const ProfileSetup = ({ authToken, onComplete }) => {
     const [formData, setFormData] = useState({
         age: '',
-        gender: '',
+        gender: 'male',
         height: '',
         weight: '',
-        goal: 'gain' // gain | lose | maintain
+        goal: 'muscle_gain' // muscle_gain, weight_loss, endurance, general_fitness
     });
     const [calories, setCalories] = useState(0);
     const [protein, setProtein] = useState(0);
@@ -70,7 +72,7 @@ const ProfileSetup = ({ authToken, onComplete }) => {
                 daily_protein: protein
             };
 
-            const res = await fetch('http://localhost:3000/api/profile', {
+            const res = await fetch(`${API_BASE_URL}/api/profile`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

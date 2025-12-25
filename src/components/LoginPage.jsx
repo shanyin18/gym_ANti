@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 
+import API_BASE_URL from '../config';
+
 const LoginPage = ({ onLogin }) => {
-    const [isRegister, setIsRegister] = useState(false);
+    const [isRegistering, setIsRegistering] = useState(false);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        setLoading(true);
+
+        const endpoint = isRegistering ? '/api/register' : '/api/login';
 
         try {
-            const endpoint = isRegister ? '/api/register' : '/api/login';
-            const res = await fetch(`http://localhost:3000${endpoint}`, {
+            const res = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })

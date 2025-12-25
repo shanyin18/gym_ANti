@@ -3,6 +3,7 @@ import ChatInterface from './components/ChatInterface';
 import CloudBackground from './components/CloudBackground';
 import LoginPage from './components/LoginPage';
 import ProfileSetup from './components/ProfileSetup';
+import API_BASE_URL from './config';
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -21,7 +22,7 @@ function App() {
 
     const checkProfile = async (token) => {
         try {
-            const res = await fetch('http://localhost:3000/api/profile', {
+            const res = await fetch(`${API_BASE_URL}/api/profile`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }

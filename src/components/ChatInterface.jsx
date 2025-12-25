@@ -3,6 +3,8 @@ import MessageBubble from './MessageBubble';
 import Typer from './Typer';
 import ProfilePage from './ProfilePage';
 
+import API_BASE_URL from '../config';
+
 const ChatInterface = ({ authToken, onLogout }) => {
     const [messages, setMessages] = useState([
         { id: 1, sender: 'ai', text: `您好！我是小鱼飞飞 🐟\n正在从数据库读取您的历史记录...` }
@@ -17,7 +19,7 @@ const ChatInterface = ({ authToken, onLogout }) => {
 
     // Load History on Mount
     useEffect(() => {
-        fetch('http://localhost:3000/api/history', {
+        fetch(`${API_BASE_URL}/api/history`, {
             headers: {
                 'Authorization': `Bearer ${authToken}`
             }

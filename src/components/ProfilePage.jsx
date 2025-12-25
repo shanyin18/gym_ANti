@@ -20,7 +20,7 @@ const ProfilePage = ({ authToken, onClose, onUpdate }) => {
 
     const loadProfile = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/profile', {
+            const res = await fetch(`${API_BASE_URL}/api/profile`, {
                 headers: {
                     'Authorization': `Bearer ${authToken}`
                 }
