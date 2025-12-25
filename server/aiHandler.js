@@ -2,20 +2,25 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import fs from 'fs';
 
-dotenv.config();
+const dotenvResult = dotenv.config();
+console.log("DEBUG: Current working directory:", process.cwd());
+if (dotenvResult.error) {
+  console.log("DEBUG: dotenv error:", dotenvResult.error.message);
+} else {
+  console.log("DEBUG: dotenv keys loaded:", Object.keys(dotenvResult.parsed || {}));
+}
+console.log("DEBUG: DOUBAO_API_KEY available:", !!process.env.DOUBAO_API_KEY);
 
 // Initialize OpenAI client for Doubao
 const client = new OpenAI({
-  apiKey: process.env.DOUBAO_API_KEY,
+  apiKey: process.env.DOUBAO_API_KEY || "dummy_key_to_prevent_startup_crash",
   baseURL: "https://ark.cn-beijing.volces.com/api/v3",
 });
 
 const SYSTEM_PROMPT = `
 你是一个专业的健身教练和营养师 AI，名叫"小鱼飞飞"。
-用户的目标是：
-- 身高 186cm, 体重 68kg (增肌期)。
-- 每日目标: 热量 2800kcal, 蛋白质 150g。
-- 训练循环: Day 1 (胸+三头), Day 2 (肩+腹), Day 3 (背+二头)。
+
+{{USER_PROFILE_PLACEHOLDER}}
 
 你的任务是处理用户的自然语言输入，并返回 JSON 格式的数据供系统记录到数据库，同时给出一段自然的中文回复。
 
@@ -77,8 +82,7 @@ export const processWithAI = async (message, historyLogs, userProfile) => {
     let dynamicPrompt = SYSTEM_PROMPT;
 
     if (userProfile) {
-      const profileInfo = `
-用户档案：
+      const profileInfo = `用户档案：
 - 年龄: ${userProfile.age}岁
 - 性别: ${userProfile.gender === 'male' ? '男' : '女'}
 - 身高: ${userProfile.height}cm
@@ -87,7 +91,10 @@ export const processWithAI = async (message, historyLogs, userProfile) => {
 - 每日热量目标: ${userProfile.daily_calories}kcal
 - 每日蛋白质目标: ${userProfile.daily_protein}g
 `;
-      dynamicPrompt = dynamicPrompt.replace('用户的目标是：\n- 身高 186cm, 体重 68kg (增肌期)。\n- 每日目标: 热量 2800kcal, 蛋白质 150g。', profileInfo);
+      dynamicPrompt = dynamicPrompt.replace('{{USER_PROFILE_PLACEHOLDER}}', profileInfo);
+    } else {
+      // Fallback if no profile exists
+      dynamicPrompt = dynamicPrompt.replace('{{USER_PROFILE_PLACEHOLDER}}', '用户尚未设置个人档案。');
     }
 
     // Build context
