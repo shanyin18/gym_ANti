@@ -3,9 +3,10 @@ import ChatInterface from './components/ChatInterface';
 import CloudBackground from './components/CloudBackground';
 import LoginPage from './components/LoginPage';
 import ProfileSetup from './components/ProfileSetup';
-import API_BASE_URL from './config';
+import LandingAnimation from './components/LandingAnimation';
 
 function App() {
+    const [showLanding, setShowLanding] = useState(true); // 每次刷新都显示着陆动画
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [authToken, setAuthToken] = useState(null);
     const [hasProfile, setHasProfile] = useState(null); // null = checking, true/false = result
@@ -22,7 +23,7 @@ function App() {
 
     const checkProfile = async (token) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/profile`, {
+            const res = await fetch('http://localhost:3000/api/profile', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -33,6 +34,10 @@ function App() {
             console.error('Profile check error:', err);
             setHasProfile(false);
         }
+    };
+
+    const handleLandingComplete = () => {
+        setShowLanding(false);
     };
 
     const handleLogin = (token) => {
@@ -52,6 +57,11 @@ function App() {
     const handleProfileComplete = () => {
         setHasProfile(true);
     };
+
+    // Show landing animation first
+    if (showLanding) {
+        return <LandingAnimation onComplete={handleLandingComplete} />;
+    }
 
     // Show login page if not logged in
     if (!isLoggedIn) {
