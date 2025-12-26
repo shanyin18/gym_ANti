@@ -59,7 +59,7 @@ const ChatInterface = ({ authToken, onLogout }) => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-            const res = await fetch('http://localhost:3000/api/chat', {
+            const res = await fetch(`${API_BASE_URL}/api/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
