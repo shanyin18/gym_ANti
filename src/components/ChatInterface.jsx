@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import MessageBubble from './MessageBubble';
 import Typer from './Typer';
 import ProfilePage from './ProfilePage';
+import DailyLog from './DailyLog';
 
 import API_BASE_URL from '../config';
 
@@ -10,6 +12,7 @@ const ChatInterface = ({ authToken, onLogout }) => {
         { id: 1, sender: 'ai', text: `您好！我是小鱼飞飞 🐟\n正在从数据库读取您的历史记录...` }
     ]);
     const [showProfile, setShowProfile] = useState(false);
+    const [showDailyLog, setShowDailyLog] = useState(false);
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -26,9 +29,6 @@ const ChatInterface = ({ authToken, onLogout }) => {
         })
             .then(res => res.json())
             .then(data => {
-                // Convert Excel rows to simplified chat history if needed, 
-                // or just welcome user. 
-                // For now, let's just update the welcome message based on recent logs.
                 if (data.length > 0) {
                     const lastLog = data[data.length - 1];
                     setMessages([{
@@ -51,11 +51,9 @@ const ChatInterface = ({ authToken, onLogout }) => {
     }, []);
 
     const handleSend = async (text) => {
-        // 1. Add User Message
         setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text }]);
 
         try {
-            // 2. Call API with 60s timeout
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 60000);
 
@@ -70,8 +68,6 @@ const ChatInterface = ({ authToken, onLogout }) => {
             });
             clearTimeout(timeoutId);
             const data = await res.json();
-
-            // 3. Add AI Response
             setMessages(prev => [...prev, { id: Date.now() + 1, sender: 'ai', text: data.reply }]);
 
         } catch (err) {
@@ -80,93 +76,164 @@ const ChatInterface = ({ authToken, onLogout }) => {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: '800px', margin: '0 auto', background: 'transparent', position: 'relative' }}>
-            {/* Header with logout button */}
-            <div style={{
-                padding: '12px 20px',
-                background: 'linear-gradient(135deg, #039be5 0%, #0288d1 100%)',
-                color: 'white',
+        <div className="animate-entry" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            width: '100%',
+            maxWidth: '900px',
+            margin: '0 auto',
+            position: 'relative',
+        }}>
+            {/* Floating Glass Header */}
+            <div className="glass-card" style={{
+                position: 'absolute',
+                top: '20px',
+                left: '20px',
+                right: '20px',
+                zIndex: 100,
+                padding: '12px 24px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderRadius: '15px 15px 0 0',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                borderRadius: '16px',
             }}>
-                <div>
-                    <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>小鱼飞飞 🐟</h2>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', opacity: 0.85 }}>
-                        {localStorage.getItem('username') || '用户'}
-                    </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                        width: '40px', height: '40px', background: '#fff', borderRadius: '50%',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px'
+                    }}>🐟</div>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)' }}>小鱼飞飞</h2>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {localStorage.getItem('username') || '用户'} • 在线
+                        </p>
+                    </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button
-                        onClick={() => setShowProfile(true)}
+                        onClick={() => setShowDailyLog(true)}
                         style={{
-                            background: 'rgba(255,255,255,0.25)',
-                            border: '1px solid rgba(255,255,255,0.4)',
-                            color: 'white',
+                            background: 'rgba(255,255,255,0.5)',
+                            border: '1px solid white',
+                            color: 'var(--text-primary)',
                             padding: '8px 16px',
-                            borderRadius: '8px',
+                            borderRadius: '12px',
                             cursor: 'pointer',
                             fontSize: '13px',
-                            fontWeight: 'bold',
-                            transition: 'all 0.2s'
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                         }}
-                        onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.35)'}
-                        onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.25)'}
+                        onMouseOver={(e) => {
+                            e.target.style.transform = 'translateY(-1px)';
+                            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                        }}
+                        onMouseOut={(e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                        }}
                     >
-                        ⚙️ 设置
+                        📋清单
+                    </button>
+                    <button
+                        onClick={() => setShowProfile(true)}
+                        style={{
+                            background: 'rgba(255,255,255,0.5)',
+                            border: '1px solid white',
+                            color: 'var(--text-primary)',
+                            padding: '8px 16px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                        }}
+                        onMouseOver={(e) => {
+                            e.target.style.transform = 'translateY(-1px)';
+                            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                        }}
+                        onMouseOut={(e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                        }}
+                    >
+                        ⚙️设置
                     </button>
                     <button
                         onClick={onLogout}
                         style={{
-                            background: 'rgba(255,255,255,0.25)',
-                            border: '1px solid rgba(255,255,255,0.4)',
+                            background: 'var(--accent-color)',
+                            border: 'none',
                             color: 'white',
                             padding: '8px 16px',
-                            borderRadius: '8px',
+                            borderRadius: '12px',
                             cursor: 'pointer',
                             fontSize: '13px',
-                            fontWeight: 'bold',
-                            transition: 'all 0.2s'
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 4px 12px rgba(0, 229, 255, 0.3)'
                         }}
-                        onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.35)'}
-                        onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.25)'}
+                        onMouseOver={(e) => {
+                            e.target.style.transform = 'translateY(-1px)';
+                            e.target.style.boxShadow = '0 6px 16px rgba(0, 229, 255, 0.4)';
+                        }}
+                        onMouseOut={(e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = '0 4px 12px rgba(0, 229, 255, 0.3)';
+                        }}
                     >
-                        切换账号
+                        退出
                     </button>
                 </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', paddingBottom: '80px' }}>
-                {messages.map(m => <MessageBubble key={m.id} message={m} />)}
+            {/* Chat Area - Added top padding for floating header */}
+            <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '100px 20px 100px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
+            }}>
+                {messages.map((m, index) => (
+                    <div key={m.id} style={{
+                        animation: `fadeInUp 0.5s var(--ease-out-back) forwards`,
+                        animationDelay: `${index * 0.1}s`,
+                        opacity: 0
+                    }}>
+                        <MessageBubble message={m} />
+                    </div>
+                ))}
                 <div ref={messagesEndRef} />
             </div>
-            <div style={{ position: 'absolute', bottom: 0, width: '100%' }}>
+
+            <div style={{ position: 'absolute', bottom: 0, width: '100%', zIndex: 101 }}>
                 <Typer onSend={handleSend} />
             </div>
 
-            {/* Profile Page Overlay */}
-            {showProfile && (
+            {/* Profile Overlay - Portal to body */}
+            {showProfile && ReactDOM.createPortal(
                 <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '100vw',
-                    height: '100vh',
-                    zIndex: 1000,
-                    background: 'rgba(0, 0, 0, 0.3)',
-                    backdropFilter: 'blur(5px)'
+                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                    zIndex: 9999, background: 'rgba(0, 0, 0, 0.3)', backdropFilter: 'blur(8px)',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center'
                 }}>
                     <ProfilePage
                         authToken={authToken}
                         onClose={() => setShowProfile(false)}
-                        onUpdate={() => {
-                            // Optionally refresh chat or show a message
-                            console.log('Profile updated!');
-                        }}
+                        onUpdate={() => console.log('Profile updated!')}
                     />
-                </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Daily Log Overlay - Portal to body */}
+            {showDailyLog && ReactDOM.createPortal(
+                <DailyLog authToken={authToken} onClose={() => setShowDailyLog(false)} />,
+                document.body
             )}
         </div>
     );

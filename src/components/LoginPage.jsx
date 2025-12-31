@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-
 import API_BASE_URL from '../config';
 
 const LoginPage = ({ onLogin }) => {
@@ -34,7 +33,6 @@ const LoginPage = ({ onLogin }) => {
                 setIsRegistering(false);
                 setPassword('');
             } else {
-                // Login success
                 localStorage.setItem('auth_token', data.token);
                 localStorage.setItem('username', data.username);
                 onLogin(data.token);
@@ -48,91 +46,59 @@ const LoginPage = ({ onLogin }) => {
 
     return (
         <div style={{
-            width: '100vw',
-            height: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative'
+            width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative'
         }}>
-            <div style={{
-                background: 'rgba(255, 255, 255, 0.25)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255, 255, 255, 0.6)',
-                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.1)',
-                borderRadius: '20px',
-                padding: '40px',
-                width: '400px',
-                maxWidth: '90%'
+            <div className="glass-card animate-entry" style={{
+                padding: '48px',
+                width: '380px',
+                maxWidth: '90%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
             }}>
-                <h1 style={{
-                    textAlign: 'center',
-                    color: '#01579b',
-                    marginBottom: '10px',
-                    fontSize: '28px'
-                }}>小鱼飞飞</h1>
-                <p style={{
-                    textAlign: 'center',
-                    color: '#0277bd',
-                    marginBottom: '30px',
-                    fontSize: '14px'
-                }}>您的专属健身管家</p>
+                <div style={{
+                    width: '80px', height: '80px', background: 'linear-gradient(135deg, #fff 0%, #e3f2fd 100%)',
+                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '40px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)', marginBottom: '24px'
+                }}>
+                    🐟
+                </div>
 
-                <form onSubmit={handleSubmit}>
+                <h1 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)', fontSize: '24px', fontWeight: 'bold' }}>
+                    {isRegistering ? '加入旅程' : '欢迎回来'}
+                </h1>
+                <p style={{ margin: '0 0 32px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    {isRegistering ? '创建您的健身档案' : '登录以继续您的训练'}
+                </p>
+
+                <form onSubmit={handleSubmit} style={{ width: '100%' }}>
                     <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#01579b', fontWeight: 'bold' }}>
-                            用户名
-                        </label>
                         <input
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
+                            placeholder="用户名"
                             required
-                            style={{
-                                width: '100%',
-                                padding: '12px',
-                                borderRadius: '10px',
-                                border: '1px solid rgba(2, 119, 189, 0.3)',
-                                background: 'rgba(255, 255, 255, 0.5)',
-                                fontSize: '16px',
-                                outline: 'none',
-                                boxSizing: 'border-box'
-                            }}
+                            style={inputStyle}
                         />
                     </div>
-
-                    <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#01579b', fontWeight: 'bold' }}>
-                            密码
-                        </label>
+                    <div style={{ marginBottom: '24px' }}>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            placeholder="密码"
                             required
-                            style={{
-                                width: '100%',
-                                padding: '12px',
-                                borderRadius: '10px',
-                                border: '1px solid rgba(2, 119, 189, 0.3)',
-                                background: 'rgba(255, 255, 255, 0.5)',
-                                fontSize: '16px',
-                                outline: 'none',
-                                boxSizing: 'border-box'
-                            }}
+                            style={inputStyle}
                         />
                     </div>
 
                     {error && (
                         <div style={{
-                            padding: '10px',
-                            borderRadius: '8px',
-                            backgroundColor: error.includes('成功') ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                            padding: '12px', borderRadius: '12px', marginBottom: '20px', fontSize: '13px', textAlign: 'center',
+                            background: error.includes('成功') ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)',
                             color: error.includes('成功') ? '#2e7d32' : '#c62828',
-                            marginBottom: '20px',
-                            fontSize: '14px',
-                            textAlign: 'center'
+                            border: `1px solid ${error.includes('成功') ? '#c8e6c9' : '#ffcdd2'}`
                         }}>
                             {error}
                         </div>
@@ -142,44 +108,48 @@ const LoginPage = ({ onLogin }) => {
                         type="submit"
                         disabled={loading}
                         style={{
-                            width: '100%',
-                            padding: '14px',
-                            borderRadius: '10px',
-                            border: 'none',
-                            background: loading ? '#90caf9' : '#039be5',
-                            color: 'white',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
+                            width: '100%', padding: '16px', borderRadius: '16px', border: 'none',
+                            background: 'var(--accent-color)', color: 'white', fontSize: '16px', fontWeight: '600',
                             cursor: loading ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.3s',
-                            boxShadow: '0 4px 12px rgba(3, 155, 229, 0.3)'
+                            opacity: loading ? 0.7 : 1,
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 4px 12px rgba(0, 188, 212, 0.3)'
                         }}
+                        onMouseOver={(e) => !loading && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 8px 20px rgba(0, 188, 212, 0.4)')}
+                        onMouseOut={(e) => !loading && (e.target.style.transform = 'translateY(0)', e.target.style.boxShadow = '0 4px 12px rgba(0, 188, 212, 0.3)')}
                     >
-                        {loading ? '处理中...' : (isRegistering ? '注册' : '登录')}
+                        {loading ? '处理中...' : (isRegistering ? '立即注册' : '登录')}
                     </button>
                 </form>
 
-                <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                    <button
-                        onClick={() => {
-                            setIsRegistering(!isRegistering);
-                            setError('');
-                        }}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#0288d1',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            textDecoration: 'underline'
-                        }}
-                    >
-                        {isRegistering ? '已有账号？去登录' : '没有账号？去注册'}
-                    </button>
-                </div>
+                <button
+                    onClick={() => { setIsRegistering(!isRegistering); setError(''); }}
+                    style={{
+                        background: 'none', border: 'none', color: 'var(--text-secondary)',
+                        cursor: 'pointer', fontSize: '14px', marginTop: '24px', fontWeight: '500',
+                        transition: 'color 0.2s'
+                    }}
+                    onMouseOver={(e) => e.target.style.color = 'var(--text-primary)'}
+                    onMouseOut={(e) => e.target.style.color = 'var(--text-secondary)'}
+                >
+                    {isRegistering ? '已有账号？去登录' : '没有账号？注册新用户'}
+                </button>
             </div>
         </div>
     );
+};
+
+const inputStyle = {
+    width: '100%',
+    padding: '16px',
+    borderRadius: '16px',
+    border: '2px solid transparent',
+    background: 'rgba(255, 255, 255, 0.5)',
+    fontSize: '15px',
+    outline: 'none',
+    boxSizing: 'border-box',
+    transition: 'all 0.3s ease',
+    color: '#333'
 };
 
 export default LoginPage;

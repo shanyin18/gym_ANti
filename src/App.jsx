@@ -4,6 +4,7 @@ import CloudBackground from './components/CloudBackground';
 import LoginPage from './components/LoginPage';
 import ProfileSetup from './components/ProfileSetup';
 import LandingAnimation from './components/LandingAnimation';
+import API_BASE_URL from './config';
 
 function App() {
     const [showLanding, setShowLanding] = useState(true); // 每次刷新都显示着陆动画
@@ -23,7 +24,7 @@ function App() {
 
     const checkProfile = async (token) => {
         try {
-            const res = await fetch('http://localhost:3000/api/profile', {
+            const res = await fetch(`${API_BASE_URL}/api/profile`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -88,7 +89,7 @@ function App() {
         return (
             <div className="app-container">
                 <CloudBackground />
-                <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%' }}>
+                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                     <ChatInterface authToken={authToken} onLogout={handleLogout} />
                 </div>
             </div>

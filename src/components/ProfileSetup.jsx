@@ -8,7 +8,7 @@ const ProfileSetup = ({ authToken, onComplete }) => {
         gender: 'male',
         height: '',
         weight: '',
-        goal: 'muscle_gain' // muscle_gain, weight_loss, endurance, general_fitness
+        goal: 'muscle_gain'
     });
     const [calories, setCalories] = useState(0);
     const [protein, setProtein] = useState(0);
@@ -103,81 +103,41 @@ const ProfileSetup = ({ authToken, onComplete }) => {
 
     return (
         <div style={{
-            width: '100vw',
-            height: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative'
+            width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative'
         }}>
-            <div style={{
-                background: 'rgba(255, 255, 255, 0.3)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255, 255, 255, 0.6)',
-                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.1)',
-                borderRadius: '20px',
+            <div className="glass-card animate-entry" style={{
                 padding: '40px',
                 width: '500px',
                 maxWidth: '90%'
             }}>
                 <h1 style={{
-                    textAlign: 'center',
-                    color: '#01579b',
-                    marginBottom: '10px',
-                    fontSize: '28px'
+                    textAlign: 'center', color: 'var(--text-primary)', marginBottom: '8px', fontSize: '26px'
                 }}>🐟 完善个人信息</h1>
                 <p style={{
-                    textAlign: 'center',
-                    color: '#0277bd',
-                    marginBottom: '30px',
-                    fontSize: '14px'
+                    textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '14px'
                 }}>让小鱼飞飞为您定制专属健身计划！</p>
 
                 <form onSubmit={handleSubmit}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#01579b', fontWeight: 'bold', fontSize: '14px' }}>
-                                年龄
-                            </label>
+                            <label style={labelStyle}>年龄</label>
                             <input
                                 type="number"
                                 value={formData.age}
                                 onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                                 required
-                                min="1"
-                                max="120"
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    borderRadius: '10px',
-                                    border: '1px solid rgba(2, 119, 189, 0.3)',
-                                    background: 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '16px',
-                                    outline: 'none',
-                                    boxSizing: 'border-box'
-                                }}
+                                min="1" max="120"
+                                style={inputStyle}
                             />
                         </div>
 
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#01579b', fontWeight: 'bold', fontSize: '14px' }}>
-                                性别
-                            </label>
+                            <label style={labelStyle}>性别</label>
                             <select
                                 value={formData.gender}
                                 onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                                 required
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    borderRadius: '10px',
-                                    border: '1px solid rgba(2, 119, 189, 0.3)',
-                                    background: 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '16px',
-                                    outline: 'none',
-                                    boxSizing: 'border-box'
-                                }}
+                                style={inputStyle}
                             >
                                 <option value="">请选择</option>
                                 <option value="male">男 👨</option>
@@ -186,62 +146,36 @@ const ProfileSetup = ({ authToken, onComplete }) => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#01579b', fontWeight: 'bold', fontSize: '14px' }}>
-                                身高 (cm)
-                            </label>
+                            <label style={labelStyle}>身高 (cm)</label>
                             <input
                                 type="number"
                                 value={formData.height}
                                 onChange={(e) => setFormData({ ...formData, height: e.target.value })}
                                 required
-                                min="100"
-                                max="250"
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    borderRadius: '10px',
-                                    border: '1px solid rgba(2, 119, 189, 0.3)',
-                                    background: 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '16px',
-                                    outline: 'none',
-                                    boxSizing: 'border-box'
-                                }}
+                                min="100" max="250"
+                                style={inputStyle}
                             />
                         </div>
 
                         <div>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#01579b', fontWeight: 'bold', fontSize: '14px' }}>
-                                体重 (kg)
-                            </label>
+                            <label style={labelStyle}>体重 (kg)</label>
                             <input
                                 type="number"
                                 step="0.1"
                                 value={formData.weight}
                                 onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                                 required
-                                min="30"
-                                max="200"
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    borderRadius: '10px',
-                                    border: '1px solid rgba(2, 119, 189, 0.3)',
-                                    background: 'rgba(255, 255, 255, 0.5)',
-                                    fontSize: '16px',
-                                    outline: 'none',
-                                    boxSizing: 'border-box'
-                                }}
+                                min="30" max="200"
+                                style={inputStyle}
                             />
                         </div>
                     </div>
 
-                    <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '12px', color: '#01579b', fontWeight: 'bold', fontSize: '14px' }}>
-                            训练目标
-                        </label>
-                        <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ marginBottom: '28px' }}>
+                        <label style={labelStyle}>训练目标</label>
+                        <div style={{ display: 'flex', gap: '12px' }}>
                             {['gain', 'lose', 'maintain'].map(g => (
                                 <button
                                     key={g}
@@ -250,14 +184,14 @@ const ProfileSetup = ({ authToken, onComplete }) => {
                                     style={{
                                         flex: 1,
                                         padding: '12px',
-                                        borderRadius: '10px',
-                                        border: formData.goal === g ? '2px solid #039be5' : '1px solid rgba(2, 119, 189, 0.3)',
-                                        background: formData.goal === g ? 'rgba(3, 155, 229, 0.2)' : 'rgba(255, 255, 255, 0.5)',
+                                        borderRadius: '12px',
+                                        border: formData.goal === g ? '2px solid var(--accent-color)' : '1px solid rgba(0, 188, 212, 0.2)',
+                                        background: formData.goal === g ? 'rgba(0, 188, 212, 0.1)' : 'rgba(255, 255, 255, 0.5)',
                                         fontSize: '14px',
-                                        fontWeight: 'bold',
+                                        fontWeight: '600',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s',
-                                        color: formData.goal === g ? '#01579b' : '#0277bd'
+                                        color: formData.goal === g ? 'var(--text-primary)' : 'var(--text-secondary)'
                                     }}
                                 >
                                     {goalLabels[g]}
@@ -269,30 +203,26 @@ const ProfileSetup = ({ authToken, onComplete }) => {
                     {/* Calculated targets display */}
                     {calories > 0 && (
                         <div style={{
-                            padding: '15px',
-                            borderRadius: '10px',
-                            background: 'rgba(76, 175, 80, 0.15)',
-                            marginBottom: '20px',
-                            border: '1px solid rgba(76, 175, 80, 0.3)'
+                            padding: '16px',
+                            borderRadius: '16px',
+                            background: 'rgba(76, 175, 80, 0.1)',
+                            marginBottom: '24px',
+                            border: '1px solid rgba(76, 175, 80, 0.3)',
+                            textAlign: 'center'
                         }}>
                             <p style={{ margin: '0 0 8px 0', color: '#2e7d32', fontSize: '14px', fontWeight: 'bold' }}>
-                                📊 根据您的数据，推荐：
+                                📊 推荐摄入量
                             </p>
-                            <p style={{ margin: 0, color: '#388e3c', fontSize: '16px' }}>
-                                每日热量: <strong>{calories} kcal</strong> | 蛋白质: <strong>{protein} g</strong>
+                            <p style={{ margin: 0, color: '#1b5e20', fontSize: '18px' }}>
+                                🔥 <strong>{calories}</strong> kcal  &nbsp;|&nbsp;  🥩 <strong>{protein}</strong> g
                             </p>
                         </div>
                     )}
 
                     {error && (
                         <div style={{
-                            padding: '10px',
-                            borderRadius: '8px',
-                            backgroundColor: 'rgba(244, 67, 54, 0.2)',
-                            color: '#c62828',
-                            marginBottom: '20px',
-                            fontSize: '14px',
-                            textAlign: 'center'
+                            padding: '12px', borderRadius: '12px', backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            color: '#c62828', marginBottom: '20px', fontSize: '14px', textAlign: 'center', border: '1px solid #ffcdd2'
                         }}>
                             {error}
                         </div>
@@ -302,18 +232,15 @@ const ProfileSetup = ({ authToken, onComplete }) => {
                         type="submit"
                         disabled={loading}
                         style={{
-                            width: '100%',
-                            padding: '14px',
-                            borderRadius: '10px',
-                            border: 'none',
-                            background: loading ? '#90caf9' : '#039be5',
-                            color: 'white',
-                            fontSize: '16px',
-                            fontWeight: 'bold',
+                            width: '100%', padding: '16px', borderRadius: '16px', border: 'none',
+                            background: 'var(--accent-color)', color: 'white', fontSize: '16px', fontWeight: '600',
                             cursor: loading ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.3s',
-                            boxShadow: '0 4px 12px rgba(3, 155, 229, 0.3)'
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 4px 12px rgba(0, 188, 212, 0.3)',
+                            opacity: loading ? 0.7 : 1
                         }}
+                        onMouseOver={(e) => !loading && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 8px 20px rgba(0, 188, 212, 0.4)')}
+                        onMouseOut={(e) => !loading && (e.target.style.transform = 'translateY(0)', e.target.style.boxShadow = '0 4px 12px rgba(0, 188, 212, 0.3)')}
                     >
                         {loading ? '保存中...' : '开始使用 🚀'}
                     </button>
@@ -321,6 +248,18 @@ const ProfileSetup = ({ authToken, onComplete }) => {
             </div>
         </div>
     );
+};
+
+const inputStyle = {
+    width: '100%', padding: '12px', borderRadius: '12px',
+    border: '1px solid rgba(255, 255, 255, 0.5)', background: 'rgba(255, 255, 255, 0.6)',
+    fontSize: '15px', outline: 'none', boxSizing: 'border-box',
+    transition: 'all 0.2s',
+    color: 'var(--text-primary)'
+};
+
+const labelStyle = {
+    display: 'block', marginBottom: '8px', color: 'var(--text-primary)', fontWeight: '600', fontSize: '13px'
 };
 
 export default ProfileSetup;

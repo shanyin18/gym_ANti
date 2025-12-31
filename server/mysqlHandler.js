@@ -103,3 +103,19 @@ export const getHistoryLogs = async (username) => {
         return [];
     }
 };
+
+// Get today's logs (for daily checklist)
+export const getTodayLogs = async (username) => {
+    try {
+        const tableName = `user_${username.replace(/[^a-zA-Z0-9]/g, '_')}_logs`;
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const [rows] = await pool.query(
+            `SELECT * FROM ${tableName} WHERE Date = ? AND (Type = 'Diet' OR Type = '饮食') ORDER BY id ASC`,
+            [today]
+        );
+        return rows;
+    } catch (error) {
+        console.error('MySQL Read Today Logs Error:', error.message);
+        return [];
+    }
+};
