@@ -7,10 +7,12 @@ import LandingAnimation from './components/LandingAnimation';
 import API_BASE_URL from './config';
 
 function App() {
-    const [showLanding, setShowLanding] = useState(true); // 每次刷新都显示着陆动画
+    const [showLanding, setShowLanding] = useState(false); // 默认关闭开场动画，直接进入登录/聊天页
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [authToken, setAuthToken] = useState(null);
-    const [hasProfile, setHasProfile] = useState(null); // null = checking, true/false = result
+    const [hasProfile, setHasProfile] = useState(null);
+
+    console.log('App State:', { isLoggedIn, showLanding, hasProfile }); // 调试用：查看当前状态
 
     useEffect(() => {
         // Check for existing token on mount
@@ -29,11 +31,24 @@ function App() {
                     'Authorization': `Bearer ${token}`
                 }
             });
+
+            if (res.status === 401 || res.status === 403) {
+                // Token invalid or expired
+                handleLogout();
+                return;
+            }
+
+            if (!res.ok) {
+                throw new Error(`Server status: ${res.status}`);
+            }
+
             const data = await res.json();
             setHasProfile(data.profile !== null);
         } catch (err) {
             console.error('Profile check error:', err);
-            setHasProfile(false);
+            // If network error or other issue, default to logout for safety
+            // avoiding "stuck in profile setup" if server is down
+            handleLogout();
         }
     };
 
@@ -59,12 +74,12 @@ function App() {
         setHasProfile(true);
     };
 
-    // Show landing animation first
+    // Show landing animation first (if enabled)
     if (showLanding) {
         return <LandingAnimation onComplete={handleLandingComplete} />;
     }
 
-    // Show login page if not logged in
+    // CRITICAL: If not logged in, ALWAYS show login page
     if (!isLoggedIn) {
         return (
             <div className="app-container">
@@ -75,17 +90,17 @@ function App() {
     }
 
     // Show profile setup if logged in but no profile
-    if (hasProfile === false) {
+    if (isLoggedIn && hasProfile === false) {
         return (
             <div className="app-container">
                 <CloudBackground />
-                <ProfileSetup authToken={authToken} onComplete={handleProfileComplete} />
+                <ProfileSetup authToken={authToken} onComplete={handleProfileComplete} onLogout={handleLogout} />
             </div>
         );
     }
 
     // Show chat interface if logged in and has profile
-    if (hasProfile === true) {
+    if (isLoggedIn && hasProfile === true) {
         return (
             <div className="app-container">
                 <CloudBackground />
@@ -96,21 +111,26 @@ function App() {
         );
     }
 
-    // Loading state
+    // Loading state (only shown briefly when we HAVE a token and are checking profile)
+    if (authToken && hasProfile === null) {
+        return (
+            <div className="app-container">
+                <CloudBackground />
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    color: '#039be5', fontSize: '18px', fontWeight: 'bold'
+                }}>
+                    正在同步您的数据...
+                </div>
+            </div>
+        );
+    }
+
+    // Default to Login Page if anything else fails
     return (
         <div className="app-container">
             <CloudBackground />
-            <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                color: '#039be5',
-                fontSize: '18px',
-                fontWeight: 'bold'
-            }}>
-                加载中...
-            </div>
+            <LoginPage onLogin={handleLogin} />
         </div>
     );
 }

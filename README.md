@@ -1,38 +1,34 @@
 # 🏋️ Gym ANti - AI健身助手
 
-一个基于AI的个性化健身与营养指导应用，提供智能对话、个性化健身计划和营养建议。
+一个基于 **LangChain RAG** 的个性化健身与营养指导应用。
 
 ## ✨ 功能特性
 
-- 🤖 **AI智能对话** - 基于Google Gemini/OpenAI的智能健身助手
+- 🤖 **RAG 智能对话** - 基于 LangChain + 豆包大模型，结合健身知识库检索
 - 👤 **个性化用户配置** - 根据年龄、性别、身高、体重和健身目标定制建议
-- 🔐 **用户认证系统** - 安全的注册/登录功能，支持JWT认证
-- 📊 **Excel数据处理** - 支持Excel文件的导入导出
-- 🎨 **精美3D界面** - 使用Three.js打造动态云层背景
-- 💬 **流畅聊天体验** - 打字机效果、自动滚动等交互优化
+- 🔐 **用户认证系统** - JWT 认证
+- 🎨 **精美3D界面** - Three.js 动态云层背景
+- 💬 **流畅聊天体验** - 打字机效果、自动滚动
 
 ## 🛠️ 技术栈
 
 ### 前端
-- **React 18** - 用户界面框架
-- **Vite** - 快速构建工具
-- **Three.js** - 3D渲染引擎
-- **@react-three/fiber** - React Three.js集成
-- **@react-three/drei** - Three.js辅助工具
+- **React 18** + **Vite**
+- **Three.js** / @react-three/fiber
 
-### 后端
-- **Node.js + Express** - 服务端框架
-- **MySQL** - 数据库
+### 后端 (Python)
+- **FastAPI** - Web 框架
+- **LangChain** - LLM 编排 (LCEL)
+- **ChromaDB** - 向量数据库
+- **豆包大模型** - LLM + Embedding
+- **MySQL** - 用户数据存储
 - **JWT** - 身份认证
-- **bcrypt** - 密码加密
-- **Google Generative AI** - AI对话接口
-- **OpenAI** - 备用AI接口
-- **xlsx** - Excel文件处理
 
 ## 📦 安装与运行
 
 ### 环境要求
 - Node.js >= 16.x
+- Python >= 3.10
 - MySQL >= 8.0
 
 ### 1. 克隆项目
@@ -43,149 +39,101 @@ cd gym_ANti
 
 ### 2. 安装依赖
 ```bash
-# 安装前端依赖
+# 前端依赖
 npm install
 
-# 安装后端依赖
-cd server
-npm install
-cd ..
+# 后端依赖
+cd server-python
+pip install -r requirements.txt
 ```
 
 ### 3. 配置数据库
-在MySQL中创建数据库并导入表结构：
 ```sql
 CREATE DATABASE gym_anti;
 ```
 
 ### 4. 配置环境变量
-在 `server` 目录下创建 `.env` 文件：
+复制 `server-python/.env.example` 为 `server-python/.env`，填写配置：
 ```env
-# 数据库配置
 DB_HOST=localhost
-DB_USER=your_mysql_user
-DB_PASSWORD=your_mysql_password
+DB_USER=root
+DB_PASSWORD=your_password
 DB_NAME=gym_anti
 
-# JWT密钥
-JWT_SECRET=your_jwt_secret_key
+JWT_SECRET=your_jwt_secret
 
-# AI API配置
-GEMINI_API_KEY=your_gemini_api_key
-OPENAI_API_KEY=your_openai_api_key
-PROXY_URL=your_proxy_url (可选)
+DOUBAO_API_KEY=your_doubao_api_key
+DOUBAO_MODEL=ep-20251223195501-9x6g5
+DOUBAO_EMBEDDING_MODEL=ep-20250115185825-rvwz4
 ```
 
 ### 5. 启动应用
 ```bash
-# 启动后端服务器（在server目录下）
-cd server
-npm start
+# 后端 (端口 8000)
+cd server-python
+uvicorn main:app --reload --port 8000
 
-# 启动前端开发服务器（在项目根目录）
+# 前端 (端口 5173)
 npm run dev
 ```
-
-应用将在以下地址运行：
-- 前端：http://localhost:5173
-- 后端：http://localhost:3000
 
 ## 📁 项目结构
 
 ```
 gym_ANti/
-├── src/                      # 前端源代码
-│   ├── components/          # React组件
-│   │   ├── ChatInterface.jsx      # 聊天界面
-│   │   ├── LoginPage.jsx          # 登录页面
-│   │   ├── ProfileSetup.jsx       # 用户配置页面
-│   │   ├── ProfilePage.jsx        # 个人资料页面
-│   │   ├── CloudBackground.jsx    # 3D云层背景
-│   │   ├── MessageBubble.jsx      # 消息气泡组件
-│   │   └── Typer.jsx              # 打字机效果组件
-│   ├── utils/               # 工具函数
-│   ├── App.jsx              # 根组件
-│   ├── main.jsx             # 入口文件
-│   └── index.css            # 全局样式
-├── server/                   # 后端源代码
-│   ├── server.js            # Express服务器主文件
-│   ├── mysqlHandler.js      # MySQL数据库连接
-│   ├── authHandler.js       # 用户认证处理
-│   ├── profileHandler.js    # 用户配置处理
-│   ├── aiHandler.js         # AI对话处理
-│   ├── excelHandler.js      # Excel文件处理
-│   └── .env                 # 环境变量配置（需自行创建）
-├── .gitignore               # Git忽略文件
-├── package.json             # 前端依赖配置
-└── README.md                # 项目说明文档
+├── src/                      # 前端 (React)
+│   ├── components/           # React 组件
+│   ├── App.jsx
+│   └── config.js             # API 配置
+├── server-python/            # 后端 (FastAPI + LangChain)
+│   ├── main.py               # FastAPI 入口
+│   ├── rag_chain.py          # LangChain RAG 链
+│   ├── auth.py               # JWT 认证
+│   ├── profile.py            # 用户档案
+│   ├── database.py           # MySQL 连接
+│   └── chroma_db/            # 向量数据库存储
+├── 事例库.md                  # RAG 知识库文档
+└── README.md
 ```
 
-## 🔑 主要功能模块
+## 🔑 API 接口
 
-### 用户认证
-- 用户注册与登录
-- JWT token验证
-- 密码加密存储
-
-### 用户配置
-- 个人信息管理（年龄、性别、身高、体重）
-- 健身目标设定
-- 配置数据持久化
-
-### AI对话
-- 基于用户配置的个性化回复
-- 支持健身和营养相关问题
-- 智能上下文理解
-
-### 数据管理
-- Excel文件导入导出
-- 用户数据CRUD操作
-- 数据库备份与恢复
-
-## 🚀 构建部署
-
-### 构建生产版本
-```bash
-# 构建前端
-npm run build
-
-# 构建产物在 dist/ 目录
-```
-
-### 生产环境运行
-```bash
-# 后端
-cd server
-npm start
-
-# 前端静态文件部署到任意静态服务器
-```
-
-## 📝 API接口
-
-### 认证相关
-- `POST /api/register` - 用户注册
-- `POST /api/login` - 用户登录
-
-### 用户配置
-- `GET /api/profile` - 获取用户配置
-- `POST /api/profile` - 创建/更新用户配置
-
-### AI对话
-- `POST /api/chat` - 发送消息并获取AI回复
-
-## 🤝 贡献指南
-
-欢迎提交Pull Request或Issue！
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /api/register | 用户注册 |
+| POST | /api/login | 用户登录 |
+| GET | /api/profile | 获取用户档案 |
+| POST | /api/profile | 保存用户档案 |
+| POST | /api/chat | AI 对话 (RAG) |
+| GET | /api/history | 历史记录 |
+| GET | /api/daily-log | 今日日志 |
+| GET | /health | 健康检查 |
 
 ## 📄 许可证
 
 MIT License
 
-## 👨‍💻 作者
-
-如有问题，欢迎联系。
-
 ---
 
 **享受你的健身之旅！💪**
+
+## 📈 性能分析
+
+为了优化系统性能，我们增加了一个自动化的性能瓶颈分析模块。
+
+### 1. 功能
+- **CPU 火焰图**: 使用 `py-spy` 生成 svg 火焰图，可视化定位 CPU 热点。
+- **负载测试**: 使用 `Locust` 模拟多用户并发登录、查看档案和进行 RAG 对话。
+- **自动化分析**: 一键脚本完成环境清理、服务器启动、预热和数据采集。
+
+### 2. 如何运行 (Windows PowerShell)
+
+请以**管理员身份**运行 PowerShell：
+```powershell
+./server-python/performance/run_analysis.ps1
+```
+脚本执行完成后，将在 `server-python/performance/profile.svg` 生成火焰图。
+
+### 3. 实现细节
+详细的实现逻辑、技术选型和代码变更对比，请参考：
+👉 **[变更日志/2026-02-09-性能瓶颈分析模块.md](变更日志/2026-02-09-性能瓶颈分析模块.md)**

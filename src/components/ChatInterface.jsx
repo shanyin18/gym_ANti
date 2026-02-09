@@ -4,6 +4,7 @@ import MessageBubble from './MessageBubble';
 import Typer from './Typer';
 import ProfilePage from './ProfilePage';
 import DailyLog from './DailyLog';
+import KnowledgeManager from './KnowledgeManager';
 
 import API_BASE_URL from '../config';
 
@@ -13,6 +14,7 @@ const ChatInterface = ({ authToken, onLogout }) => {
     ]);
     const [showProfile, setShowProfile] = useState(false);
     const [showDailyLog, setShowDailyLog] = useState(false);
+    const [showKnowledge, setShowKnowledge] = useState(false);
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -51,27 +53,61 @@ const ChatInterface = ({ authToken, onLogout }) => {
     }, []);
 
     const handleSend = async (text) => {
+        // 添加用户消息
         setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text }]);
 
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
+        // 先添加一个空的 AI 消息占位
+        const aiMessageId = Date.now() + 1;
+        setMessages(prev => [...prev, { id: aiMessageId, sender: 'ai', text: '' }]);
 
-            const res = await fetch(`${API_BASE_URL}/api/chat`, {
+        try {
+            // ===== 流式请求 (黑马风格 SSE) =====
+            const res = await fetch(`${API_BASE_URL}/api/chat/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${authToken}`
                 },
                 body: JSON.stringify({ message: text }),
-                signal: controller.signal
             });
-            clearTimeout(timeoutId);
-            const data = await res.json();
-            setMessages(prev => [...prev, { id: Date.now() + 1, sender: 'ai', text: data.reply }]);
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
+            // 读取流
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullText = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();  // 保留不完整的行
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') break;
+
+                        // 逐字追加到消息
+                        fullText += data;
+                        setMessages(prev => prev.map(m =>
+                            m.id === aiMessageId ? { ...m, text: fullText } : m
+                        ));
+                    }
+                }
+            }
 
         } catch (err) {
-            setMessages(prev => [...prev, { id: Date.now() + 1, sender: 'ai', text: "❌ 发送失败，后台服务未响应。" }]);
+            console.error('Stream error:', err);
+            setMessages(prev => prev.map(m =>
+                m.id === aiMessageId ? { ...m, text: "❌ 发送失败，后台服务未响应。" } : m
+            ));
         }
     };
 
@@ -135,6 +171,31 @@ const ChatInterface = ({ authToken, onLogout }) => {
                         }}
                     >
                         📋清单
+                    </button>
+                    <button
+                        onClick={() => setShowKnowledge(true)}
+                        style={{
+                            background: 'rgba(255,255,255,0.5)',
+                            border: '1px solid white',
+                            color: 'var(--text-primary)',
+                            padding: '8px 16px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                        }}
+                        onMouseOver={(e) => {
+                            e.target.style.transform = 'translateY(-1px)';
+                            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                        }}
+                        onMouseOut={(e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                        }}
+                    >
+                        📚知识库
                     </button>
                     <button
                         onClick={() => setShowProfile(true)}
@@ -233,6 +294,12 @@ const ChatInterface = ({ authToken, onLogout }) => {
             {/* Daily Log Overlay - Portal to body */}
             {showDailyLog && ReactDOM.createPortal(
                 <DailyLog authToken={authToken} onClose={() => setShowDailyLog(false)} />,
+                document.body
+            )}
+
+            {/* Knowledge Manager Overlay */}
+            {showKnowledge && ReactDOM.createPortal(
+                <KnowledgeManager authToken={authToken} onClose={() => setShowKnowledge(false)} />,
                 document.body
             )}
         </div>

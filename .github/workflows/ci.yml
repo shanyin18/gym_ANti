@@ -1,6 +1,5 @@
 name: CI/CD Pipeline
 
-# 触发条件：push到main分支或创建PR
 on:
   push:
     branches: [ main ]
@@ -34,22 +33,23 @@ jobs:
           name: frontend-build
           path: dist/
 
-  # 后端检查
+  # Python 后端检查
   backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: 设置Node.js
-        uses: actions/setup-node@v4
+      - name: 设置 Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '18'
+          python-version: '3.11'
           
       - name: 安装后端依赖
         run: |
-          cd server
-          npm install
+          cd server-python
+          pip install -r requirements.txt
           
-      # 可以添加后端测试
-      # - name: 运行测试
-      #   run: cd server && npm test
+      - name: 代码检查
+        run: |
+          cd server-python
+          python -c "import main; print('✅ Import check passed')"

@@ -1,0 +1,259 @@
+"""
+RAG 服务模块 (黑马风格 LCEL 版本)
+使用 LCEL 管道操作符 (|) 编排检索 + 生成流程
+"""
+import json
+from datetime import datetime
+from typing import Optional
+from operator import itemgetter
+
+from langchain_openai import ChatOpenAI
+from langchain_core.documents import Document
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
+
+from app.services.vector_store import VectorStoreService
+from app.core import config
+
+
+# ============ 工具函数 ============
+
+def format_docs(docs: list[Document]) -> str:
+    """格式化检索到的文档列表"""
+    if not docs:
+        return "(无相关参考资料)"
+    return "\n\n".join([f"文档片段：{doc.page_content}" for doc in docs])
+
+
+def format_user_profile(user_profile: Optional[dict]) -> str:
+    """格式化用户档案"""
+    if not user_profile:
+        return "用户尚未设置个人档案。"
+    return f"""用户档案：
+- 年龄: {user_profile.get('age')}岁
+- 性别: {'男' if user_profile.get('gender') == 'male' else '女'}
+- 身高: {user_profile.get('height')}cm
+- 体重: {user_profile.get('weight')}kg
+- 目标: {user_profile.get('goal')}
+- 每日热量目标: {user_profile.get('daily_calories')}kcal
+- 每日蛋白质目标: {user_profile.get('daily_protein')}g"""
+
+
+def format_history(history_logs: list) -> str:
+    """格式化历史记录"""
+    if not history_logs:
+        return "(暂无历史记录)"
+    return "\n".join([
+        f"{log.get('Date', '')} {log.get('TimeOfDay', '')} - {log.get('Type', '')}: "
+        f"{log.get('Content', '')} ({log.get('Calories', 0)}kcal, {log.get('Protein', 0)}g蛋白质)"
+        for log in history_logs
+    ])
+
+
+def parse_ai_response(text: str) -> dict:
+    """从 AI 响应中提取 JSON"""
+    first_open = text.find("{")
+    if first_open == -1:
+        return {"logs": [], "reply": text}
+    
+    temp_text = text[first_open:]
+    closing_indices = [i for i, c in enumerate(temp_text) if c == "}"]
+    
+    for i in reversed(closing_indices):
+        candidate = temp_text[:i + 1]
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+    
+    return {"logs": [], "reply": text}
+
+
+def get_current_time() -> str:
+    """获取当前时间字符串"""
+    return datetime.now().strftime("%Y年%m月%d日 %H:%M")
+
+
+# ============ Prompt 模板 ============
+
+SYSTEM_PROMPT = """你是一个专业的健身教练和营养师 AI，名叫"小鱼飞飞"。
+
+{user_profile_info}
+
+你的任务是处理用户的自然语言输入，并返回 JSON 格式的数据供系统记录到数据库，同时给出一段自然的中文回复。
+
+**重要：timeOfDay 判断逻辑**
+根据用户提问的时间（会在下方提供）自动判断是哪一餐：
+- 06:00-10:00 → "Morning" (早餐)
+- 11:00-14:00 → "Noon" (午餐)  
+- 17:00-20:00 → "Evening" (晚餐)
+- 其他时间 → "Snack" (加餐)
+
+如果用户明确说明了时间（如"中午吃了"、"晚上练了"），优先按用户说的来判断。
+
+请严格以 JSON 格式返回，不要包含 markdown 代码块标记，直接返回 JSON 字符串。
+返回格式:
+{{
+  "logs": [
+    {{
+      "timeOfDay": "Morning" | "Noon" | "Evening" | "Snack" (根据上述规则判断),
+      "type": "Diet" | "Workout",
+      "content": "摘要内容 (如: 3个鸡蛋)",
+      "calories": 200 (预估值),
+      "protein": 20 (预估值),
+      "notes": "给用户的简短建议/评价"
+    }}
+  ],
+  "reply": "直接给用户的回复文本，包含分析和建议，语气亲切专业。"
+}}
+
+逻辑规则：
+1. **饮食逻辑**:
+   - 必须基于"当前已摄入"来计算下一顿的建议。
+   - 比如早上吃了很少，要提醒中午多吃。
+   - 如果用户问"下一顿吃多少"，请根据剩余缺口计算。
+
+2. **训练逻辑 (双重渐进法)**:
+   - 如果用户记录了训练，请评价其负荷。
+   - 比较上次训练来建议加重或加次数。
+
+当前时间: {current_time}
+
+相关知识库内容（供参考）:
+{context}
+
+用户历史记录:
+{history_context}"""
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", SYSTEM_PROMPT),
+    ("human", "{input}")
+])
+
+
+# ============ RAG 服务类 (黑马风格) ============
+
+class RagService:
+    """RAG 服务类 - 使用 LCEL 链式调用"""
+    
+    def __init__(self):
+        """初始化各组件"""
+        # 1. 初始化向量库
+        self.vector_service = VectorStoreService()
+        
+        # 2. 初始化 LLM
+        self.llm = ChatOpenAI(
+            model=config.doubao_model,
+            openai_api_key=config.doubao_api_key,
+            openai_api_base=config.doubao_base_url,
+            temperature=0.7,
+        )
+        
+        # 3. 构建 LCEL 链 (核心！)
+        self.chain = self._build_chain()
+    
+    def _build_chain(self):
+        """
+        构建 LCEL 链 (黑马风格)
+        
+        数据流：
+        input_dict -> prompt -> llm -> StrOutputParser -> parse_ai_response
+        """
+        # 使用管道操作符 (|) 连接各组件
+        chain = (
+            prompt                              # 1. 填充 Prompt 模板
+            | self.llm                          # 2. 调用大模型
+            | StrOutputParser()                 # 3. 提取文本内容
+            | RunnableLambda(parse_ai_response) # 4. 解析 JSON
+        )
+        return chain
+    
+    async def process_stream(self, message: str, history_logs: list, user_profile: Optional[dict]):
+        """
+        流式处理用户消息 (黑马风格)
+        
+        使用 LCEL 的 astream() 方法逐 token 输出
+        :param message: 用户输入
+        :param history_logs: 历史记录
+        :param user_profile: 用户档案
+        :yields: 每个 token 的文本片段
+        """
+        try:
+            # ===== Step 1: 准备上下文数据 =====
+            current_time = get_current_time()
+            user_profile_info = format_user_profile(user_profile)
+            history_context = format_history(history_logs)
+            
+            # ===== Step 2: 检索相关文档 (使用 Rerank 重排) =====
+            retriever = self.vector_service.get_rerank_retriever()
+            if retriever is not None:
+                docs = retriever.invoke(message)
+                context = format_docs(docs)
+            else:
+                context = "(知识库暂不可用)"
+            
+            # ===== Step 3: 打包输入字典 =====
+            input_dict = {
+                "user_profile_info": user_profile_info,
+                "current_time": current_time,
+                "context": context,
+                "history_context": history_context,
+                "input": message,
+            }
+            
+            # ===== Step 4: 构建流式链 (不解析 JSON，只输出原始文本) =====
+            stream_chain = prompt | self.llm | StrOutputParser()
+            
+            # ===== Step 5: 流式输出 (解析 JSON 并只返回 reply) =====
+            # 我们需要累积 buffer 来寻找 "reply" 字段后的内容，因为大模型是以 JSON 流式输出的
+            full_response = ""
+            reply_started = False
+            
+            async for chunk in stream_chain.astream(input_dict):
+                full_response += chunk
+                
+                # 如果还没开始输出 reply，寻找 "reply": "
+                if not reply_started:
+                    # 寻找 "reply": " 标记
+                    marker = '"reply": "'
+                    marker_index = full_response.find(marker)
+                    if marker_index != -1:
+                        reply_started = True
+                        # 输出剩下的部分（去掉开头的引号）
+                        remaining = full_response[marker_index + len(marker):]
+                        if remaining:
+                            # 去掉末尾可能存在的 JSON 结尾字符
+                            clean_chunk = remaining.rstrip('"} \n')
+                            if clean_chunk:
+                                yield clean_chunk
+                else:
+                    # 已经开始输出内容了，直接输出当前 chunk，并清理结尾
+                    # 注意：最后一个 chunk 可能包含 "}
+                    clean_chunk = chunk.rstrip('"} \n')
+                    if clean_chunk:
+                        yield clean_chunk
+                
+        except Exception as e:
+            print(f"Stream Error: {repr(e)}")
+            yield f"抱歉，AI 服务暂时不可用 ({str(e)})"
+
+
+# ============ 全局单例管理 ============
+
+_rag_service: Optional[RagService] = None
+
+
+def get_rag_service() -> RagService:
+    """获取 RAG 服务单例"""
+    global _rag_service
+    if _rag_service is None:
+        _rag_service = RagService()
+    return _rag_service
+
+
+def init_rag_service():
+    """初始化 RAG 服务（应用启动时调用）"""
+    global _rag_service
+    _rag_service = RagService()
+    print("RagService initialized (LCEL style)")

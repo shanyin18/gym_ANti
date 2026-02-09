@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 import API_BASE_URL from '../config';
 
-const ProfileSetup = ({ authToken, onComplete }) => {
+const ProfileSetup = ({ authToken, onComplete, onLogout }) => {
     const [formData, setFormData] = useState({
         age: '',
         gender: 'male',
@@ -108,8 +108,29 @@ const ProfileSetup = ({ authToken, onComplete }) => {
             <div className="glass-card animate-entry" style={{
                 padding: '40px',
                 width: '500px',
-                maxWidth: '90%'
+                maxWidth: '90%',
+                position: 'relative'
             }}>
+                {/* Logout Button */}
+                <button
+                    onClick={onLogout}
+                    style={{
+                        position: 'absolute',
+                        top: '15px',
+                        right: '15px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                    }}
+                >
+                    退出登录
+                </button>
+
                 <h1 style={{
                     textAlign: 'center', color: 'var(--text-primary)', marginBottom: '8px', fontSize: '26px'
                 }}>🐟 完善个人信息</h1>
