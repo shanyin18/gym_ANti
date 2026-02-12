@@ -28,6 +28,11 @@ datasets              # HuggingFace datasets (RAGAs 依赖)
 unstructured-client   # Unstructured API 客户端 (PDF解析)
 tenacity              # 重试机制
 
+# ===== 链路追踪 (第五周新增) =====
+langsmith             # LangSmith 链路追踪
+
+# ===== 指标监控 (Prometheus) =====
+prometheus-fastapi-instrumentator>=7.0.0
 
 # ===== 性能分析工具 (新增) =====
 py-spy                # 采样分析器

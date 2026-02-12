@@ -84,7 +84,7 @@ class DietHistoryTool(BaseTool):
 
 class KnowledgeBaseTool(BaseTool):
     name: str = "search_knowledge_base"
-    description: str = "查询健身专业知识库。当用户询问关于减脂、增肌、饮食建议、训练方法等通用健身问题时，必须使用此工具获取专业依据。"
+    description: str = "查询健身专业知识库。仅在用户询问关于减脂、增肌、饮食建议、训练方法等通用概念时使用。**禁止**用于查询食物的具体热量值（应使用计算器）。"
     args_schema: Type[BaseModel] = KnowledgeBaseInput
     
     _vector_service: Optional[VectorStoreService] = None
@@ -115,6 +115,8 @@ class CalorieCalculatorTool(BaseTool):
     name: str = "calculate_food_calories"
     description: str = "计算食物热量。当用户询问“2个苹果多少热量”或“一碗米饭和3个鸡蛋的热量”等涉及食物数量和热量计算的问题时使用。"
     args_schema: Type[BaseModel] = CalorieCalculatorInput
+    return_direct: bool = True # 直接返回结果，停止 Agent 继续思考，极大加速相应
+
 
     # 简单的 Mock Database
     FOOD_DB: dict = {

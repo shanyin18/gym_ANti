@@ -11,7 +11,7 @@ from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.retrievers import BM25Retriever
-from langchain_cohere import CohereRerank
+from langsmith import traceable
 from app.core import config
 
 
@@ -28,6 +28,7 @@ class HybridRetriever(BaseRetriever):
     class Config:
         arbitrary_types_allowed = True
     
+    @traceable(run_type="retriever", name="Hybrid_BM25_Vector")
     def _get_relevant_documents(self, query: str, **kwargs) -> List[Document]:
         """
         融合多个检索器的结果
@@ -66,6 +67,7 @@ class RerankRetriever(BaseRetriever):
     class Config:
         arbitrary_types_allowed = True
         
+    @traceable(run_type="retriever", name="Cohere_Rerank")
     def _get_relevant_documents(self, query: str, **kwargs) -> List[Document]:
         # 1. 基础召回
         docs = self.base_retriever.invoke(query)
@@ -94,6 +96,7 @@ class DoubaoMultiModalEmbeddings(Embeddings):
         self.base_url = base_url.rstrip("/")
         self.endpoint = f"{self.base_url}/embeddings/multimodal"
     
+    @traceable(run_type="embedding", name="Doubao_Embedding_API")
     def _call_api(self, texts: List[str]) -> List[List[float]]:
         """调用豆包 multimodal embedding API"""
         headers = {
@@ -132,6 +135,7 @@ class DoubaoMultiModalEmbeddings(Embeddings):
         
         return embeddings
     
+    @traceable(run_type="embedding", name="Doubao_Embed_Docs")
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """
         嵌入多个文档
@@ -149,6 +153,7 @@ class DoubaoMultiModalEmbeddings(Embeddings):
                 embeddings.append([])  # fallback: 空向量
         return embeddings
     
+    @traceable(run_type="embedding", name="Doubao_Embed_Query")
     def embed_query(self, text: str) -> List[float]:
         """嵌入单个查询"""
         result = self._call_api([text])
@@ -272,7 +277,8 @@ class VectorStoreService(object):
         # 强制修改 hybrid retriever 的 top_k 为 20，以便召回更多
         base_retriever.top_k = 20
         
-        # 2. 压缩器 (Cohere Rerank)
+        # 2. 压缩器 (Cohere Rerank) - 懒加载避免 import 时网络阻塞
+        from langchain_cohere import CohereRerank
         compressor = CohereRerank(
             cohere_api_key=config.cohere_api_key,
             model="rerank-multilingual-v3.0",

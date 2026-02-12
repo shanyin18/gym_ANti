@@ -16,6 +16,7 @@ from cache_manager import cache_manager
 from app.services.agent_service import init_agent_service, get_agent_service
 from vector_store import VectorStoreService
 from app.services.pdf_parser import get_pdf_parser
+from prometheus_fastapi_instrumentator import Instrumentator
 
 
 # ============ Pydantic Models ============
@@ -81,6 +82,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus 指标埋点 — 自动记录 QPS / 延迟 / 错误率
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -317,6 +321,10 @@ async def api_chat_stream(req: ChatRequest, user: dict = Depends(get_current_use
     
     # 获取用户档案和历史记录
     user_profile = await get_profile(username)
+    if not user_profile:
+        user_profile = {}
+    user_profile["username"] = username # 强制注入用户名，让 Agent 知道是谁
+    
     history_logs = await get_history_logs(username)
     agent_service = get_agent_service()
     
@@ -326,8 +334,10 @@ async def api_chat_stream(req: ChatRequest, user: dict = Depends(get_current_use
         格式: data: {chunk}\n\n
         """
         async for chunk in agent_service.process_stream(req.message, history_logs, user_profile):
-            # SSE 标准格式
-            yield f"data: {chunk}\n\n"
+            # SSE 标准格式: 多行内容必须每一行都加 data: 前缀
+            # 否则前端 EventSource 只会读取第一行，导致 "计算结果：" 后的内容丢失
+            formatted_chunk = chunk.replace("\n", "\ndata: ")
+            yield f"data: {formatted_chunk}\n\n"
         # 结束标记
         yield "data: [DONE]\n\n"
     

@@ -3,7 +3,9 @@
 封装 Milvus 向量库操作，参考黑马教程 vector_stores.py 风格
 """
 import os
+import asyncio
 from typing import List, Any, Optional
+import json
 import httpx
 from pymilvus import (
     connections,
@@ -19,7 +21,12 @@ from langchain_core.retrievers import BaseRetriever
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.retrievers import BM25Retriever
 from langchain_cohere import CohereRerank
+from langsmith import traceable
 import config
+from batch_utils import AsyncBatchProcessor, batch_items
+
+# ============ 常量 ============
+EMBEDDING_BATCH_SIZE = 10  # 豆包 API 单次批量上限 (根据实际 API 限制调整)
 
 
 # ============ 自定义混合检索器 (替代 EnsembleRetriever) ============
@@ -60,6 +67,38 @@ class HybridRetriever(BaseRetriever):
         # 按分数排序，取 top_k
         sorted_docs = sorted(doc_scores.values(), key=lambda x: x[1], reverse=True)
         return [doc for doc, score in sorted_docs[:self.top_k]]
+    
+    async def _aget_relevant_documents(self, query: str, **kwargs) -> List[Document]:
+        """异步融合多个检索器的结果 (并行调用)"""
+        doc_scores = {}
+        
+        async def fetch_from_retriever(retriever, weight):
+            try:
+                # 如果 retriever 有 ainvoke 就用，否则 run_in_executor
+                if hasattr(retriever, 'ainvoke'):
+                    docs = await retriever.ainvoke(query)
+                else:
+                    loop = asyncio.get_event_loop()
+                    docs = await loop.run_in_executor(None, retriever.invoke, query)
+                return docs, weight
+            except Exception as e:
+                print(f"Async Retriever error: {e}")
+                return [], weight
+        
+        tasks = [fetch_from_retriever(r, w) for r, w in zip(self.retrievers, self.weights)]
+        results = await asyncio.gather(*tasks)
+        
+        for docs, weight in results:
+            for rank, doc in enumerate(docs):
+                doc_id = doc.page_content[:100]
+                rrf_score = weight / (rank + 60)
+                if doc_id in doc_scores:
+                    doc_scores[doc_id] = (doc, doc_scores[doc_id][1] + rrf_score)
+                else:
+                    doc_scores[doc_id] = (doc, rrf_score)
+        
+        sorted_docs = sorted(doc_scores.values(), key=lambda x: x[1], reverse=True)
+        return [doc for doc, score in sorted_docs[:self.top_k]]
 
 
 class RerankRetriever(BaseRetriever):
@@ -86,6 +125,29 @@ class RerankRetriever(BaseRetriever):
         except Exception as e:
             print(f"Rerank error: {e}")
             return docs[:5] # Fallback
+    
+    async def _aget_relevant_documents(self, query: str, **kwargs) -> List[Document]:
+        """异步重排检索"""
+        # 1. 异步基础召回
+        if hasattr(self.base_retriever, 'ainvoke'):
+            docs = await self.base_retriever.ainvoke(query)
+        else:
+            loop = asyncio.get_event_loop()
+            docs = await loop.run_in_executor(None, self.base_retriever.invoke, query)
+        
+        if not docs:
+            return []
+        
+        # 2. Cohere 重排 (同步 API，用 run_in_executor)
+        try:
+            loop = asyncio.get_event_loop()
+            compressed_docs = await loop.run_in_executor(
+                None, self.reranker.compress_documents, docs, query
+            )
+            return list(compressed_docs)
+        except Exception as e:
+            print(f"Async Rerank error: {e}")
+            return docs[:5]
 
 
 # ============ Milvus 向量检索器 ============
@@ -98,6 +160,7 @@ class MilvusRetriever(BaseRetriever):
     class Config:
         arbitrary_types_allowed = True
     
+    @traceable(run_type="retriever", name="Milvus_Search")
     def _get_relevant_documents(self, query: str, **kwargs) -> List[Document]:
         # 1. 生成查询向量
         query_vector = self.embedding.embed_query(query)
@@ -134,6 +197,53 @@ class MilvusRetriever(BaseRetriever):
                 docs.append(doc)
         
         return docs
+    
+    @traceable(run_type="retriever", name="Milvus_Search_Async")
+    async def _aget_relevant_documents(self, query: str, **kwargs) -> List[Document]:
+        """异步向量检索 (使用 embed_query_async)"""
+        # 1. 异步生成查询向量
+        if hasattr(self.embedding, 'embed_query_async'):
+            query_vector = await self.embedding.embed_query_async(query)
+        else:
+            loop = asyncio.get_event_loop()
+            query_vector = await loop.run_in_executor(None, self.embedding.embed_query, query)
+        
+        if not query_vector:
+            return []
+        
+        # 2. Milvus 搜索 (同步 API，用 run_in_executor)
+        def do_search():
+            search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
+            self.collection.load()
+            return self.collection.search(
+                data=[query_vector],
+                anns_field="embedding",
+                param=search_params,
+                limit=self.top_k,
+                output_fields=["content", "title", "doc_id", "source", "created_at"]
+            )
+        
+        loop = asyncio.get_event_loop()
+        results = await loop.run_in_executor(None, do_search)
+        
+        # 3. 转换为 LangChain Document
+        docs = []
+        for hits in results:
+            for hit in hits:
+                entity = hit.entity
+                doc = Document(
+                    page_content=entity.get("content", ""),
+                    metadata={
+                        "doc_id": entity.get("doc_id", ""),
+                        "title": entity.get("title", ""),
+                        "source": entity.get("source", ""),
+                        "created_at": entity.get("created_at", ""),
+                        "distance": hit.distance,
+                    }
+                )
+                docs.append(doc)
+        
+        return docs
 
 
 # ============ 自定义豆包多模态 Embedding 类 ============
@@ -141,6 +251,7 @@ class DoubaoMultiModalEmbeddings(Embeddings):
     """
     豆包 Embedding Vision 模型适配器
     调用 /embeddings/multimodal 接口处理文本
+    支持批量处理和异步微批处理
     """
     
     def __init__(self, api_key: str, model: str, base_url: str = "https://ark.cn-beijing.volces.com/api/v3"):
@@ -149,12 +260,13 @@ class DoubaoMultiModalEmbeddings(Embeddings):
         self.base_url = base_url.rstrip("/")
         self.endpoint = f"{self.base_url}/embeddings/multimodal"
         self._dim = None  # 缓存向量维度
+        self._batch_processor: Optional[AsyncBatchProcessor] = None
     
     def _call_api(self, texts: List[str]) -> List[List[float]]:
         """调用豆包 multimodal embedding API (带 Redis 缓存)"""
         from cache_manager import cache_manager
         
-        embeddings = []
+        embeddings = [None] * len(texts)
         uncached_texts = []
         uncached_indices = []
         
@@ -164,18 +276,17 @@ class DoubaoMultiModalEmbeddings(Embeddings):
             cached_val = cache_manager.get(cache_key)
             if cached_val:
                 try:
-                    embeddings.append(json.loads(cached_val))
+                    embeddings[i] = json.loads(cached_val)
                 except:
-                    embeddings.append(None)
-            else:
-                embeddings.append(None)
+                    pass
+            if embeddings[i] is None:
                 uncached_texts.append(text)
                 uncached_indices.append(i)
         
         if not uncached_texts:
             return embeddings
 
-        # 2. 调用 API 处理未命中项
+        # 2. 调用 API 处理未命中项 (真正的批量请求)
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
@@ -215,34 +326,47 @@ class DoubaoMultiModalEmbeddings(Embeddings):
                     
         except Exception as e:
             print(f"Embedding API error: {e}")
-            # 如果请求失败，那些 None 的只能保持 None 或抛出异常
-            # 这里简单处理，保持部分成功
             pass
         
         # 过滤掉可能的 None (如果有失败)
-        return [e for e in embeddings if e is not None]
+        return [e if e is not None else [] for e in embeddings]
     
+    @traceable(run_type="embedding", name="Doubao_Embed_Docs")
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """
-        嵌入多个文档
-        注意：豆包 multimodal API 每次只能处理一个输入，需要逐个调用
+        嵌入多个文档 (批量处理优化)
+        将文本分批发送，减少 HTTP 请求次数
         """
         if not texts:
             return []
         
-        embeddings = []
-        for text in texts:
-            result = self._call_api([text])
-            if result:
-                embeddings.append(result[0])
-            else:
-                embeddings.append([])  # fallback: 空向量
-        return embeddings
+        all_embeddings = []
+        # 分批处理
+        for batch in batch_items(texts, EMBEDDING_BATCH_SIZE):
+            batch_results = self._call_api(batch)
+            all_embeddings.extend(batch_results)
+        
+        return all_embeddings
     
+    @traceable(run_type="embedding", name="Doubao_Embed_Query")
     def embed_query(self, text: str) -> List[float]:
-        """嵌入单个查询"""
+        """嵌入单个查询 (同步)"""
         result = self._call_api([text])
         return result[0] if result else []
+    
+    @traceable(run_type="embedding", name="Doubao_Embed_Query_Async")
+    async def embed_query_async(self, text: str) -> List[float]:
+        """
+        异步嵌入单个查询 (支持微批处理)
+        高并发场景下，多个请求会被自动合并成批量调用
+        """
+        if self._batch_processor is None:
+            self._batch_processor = AsyncBatchProcessor(
+                process_fn=self._call_api,
+                max_batch_size=EMBEDDING_BATCH_SIZE,
+                linger_ms=50
+            )
+        return await self._batch_processor.process(text)
     
     def get_dimension(self) -> int:
         """获取向量维度（首次调用时会触发一次 API 请求）"""

@@ -1,0 +1,90 @@
+{
+    "dashboard": {
+        "id": null,
+        "uid": "gym_anti_fastapi",
+        "title": "Gym ANti - API 监控",
+        "tags": [
+            "FastAPI",
+            "Prometheus"
+        ],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 0,
+        "refresh": "5s",
+        "panels": [
+            {
+                "id": 1,
+                "title": "系统总 QPS (Req/s)",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 0,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "sum(rate(http_requests_total[1m]))",
+                        "legendFormat": "Total QPS",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "color": {
+                            "mode": "palette-classic"
+                        },
+                        "unit": "reqps"
+                    }
+                }
+            },
+            {
+                "id": 2,
+                "title": "P99 响应延迟 (秒)",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 12,
+                    "x": 12,
+                    "y": 0
+                },
+                "targets": [
+                    {
+                        "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[1m]) by (le)))",
+                        "legendFormat": "P99 Latency",
+                        "refId": "A"
+                    }
+                ],
+                "fieldConfig": {
+                    "defaults": {
+                        "unit": "s"
+                    }
+                }
+            },
+            {
+                "id": 3,
+                "title": "错误率 (状态码分布)",
+                "type": "timeseries",
+                "gridPos": {
+                    "h": 8,
+                    "w": 24,
+                    "x": 0,
+                    "y": 8
+                },
+                "targets": [
+                    {
+                        "expr": "sum(rate(http_requests_total{status=~'4.*'}[1m]))",
+                        "legendFormat": "4xx Errors",
+                        "refId": "A"
+                    },
+                    {
+                        "expr": "sum(rate(http_requests_total{status=~'5.*'}[1m]))",
+                        "legendFormat": "5xx Errors",
+                        "refId": "B"
+                    }
+                ]
+            }
+        ]
+    },
+    "overwrite": true
+}

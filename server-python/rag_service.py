@@ -12,6 +12,7 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
+from langsmith import traceable
 
 from vector_store import VectorStoreService
 import config
@@ -162,13 +163,44 @@ class RagService:
         """
         # 使用管道操作符 (|) 连接各组件
         chain = (
-            prompt                              # 1. 填充 Prompt 模板
-            | self.llm                          # 2. 调用大模型
-            | StrOutputParser()                 # 3. 提取文本内容
-            | RunnableLambda(parse_ai_response) # 4. 解析 JSON
-        )
+            prompt.with_config({"run_name": "FitnessPrompt"})               # 1. 填充 Prompt 模板
+            | self.llm.with_config({"run_name": "DoubaoLLM"})              # 2. 调用大模型
+            | StrOutputParser().with_config({"run_name": "ParseOutput"})    # 3. 提取文本内容
+            | RunnableLambda(parse_ai_response).with_config({"run_name": "ExtractJSON"})  # 4. 解析 JSON
+        ).with_config({"run_name": "GymAnti_RAG_Chain"})
         return chain
     
+    @traceable(run_type="chain", name="GymAnti_RAG_Process")
+    async def process(self, message: str, history_logs: list, user_profile: Optional[dict]):
+        """
+        非流式处理 (用于测试或非 SSE 场景)
+        """
+        # 1. 准备数据
+        current_time = get_current_time()
+        user_profile_info = format_user_profile(user_profile)
+        history_context = format_history(history_logs)
+        
+        # 2. 检索
+        retriever = self.vector_service.get_rerank_retriever()
+        if retriever:
+            docs = await retriever.ainvoke(message)
+            context = format_docs(docs)
+        else:
+            context = "(知识库暂不可用)"
+            
+        # 3. 构造输入
+        input_dict = {
+            "user_profile_info": user_profile_info,
+            "current_time": current_time,
+            "context": context,
+            "history_context": history_context,
+            "input": message,
+        }
+        
+        # 4. 执行链 (带 Trace)
+        return await self.chain.ainvoke(input_dict)
+    
+    @traceable(run_type="chain", name="GymAnti_RAG_Stream")
     async def process_stream(self, message: str, history_logs: list, user_profile: Optional[dict]):
         """
         流式处理用户消息 (黑马风格)
@@ -188,7 +220,7 @@ class RagService:
             # ===== Step 2: 检索相关文档 (使用 Rerank 重排) =====
             retriever = self.vector_service.get_rerank_retriever()
             if retriever is not None:
-                docs = retriever.invoke(message)
+                docs = await retriever.ainvoke(message)  # ✅ 异步检索 + 批处理
                 context = format_docs(docs)
             else:
                 context = "(知识库暂不可用)"
@@ -216,7 +248,12 @@ class RagService:
 
             # ===== Step 4: 构建流式链 (不解析 JSON，只输出原始文本) =====
             # Fix: Add RunnablePassthrough() to explicitly accept dictionary input
-            stream_chain = RunnablePassthrough() | prompt | self.llm | StrOutputParser()
+            stream_chain = (
+                RunnablePassthrough()
+                | prompt.with_config({"run_name": "FitnessPrompt"})
+                | self.llm.with_config({"run_name": "DoubaoLLM"})
+                | StrOutputParser().with_config({"run_name": "ParseOutput"})
+            ).with_config({"run_name": "GymAnti_Stream_Chain"})
             
             # ===== Step 5: 流式输出 (核心！黑马风格) =====
             full_response = ""
