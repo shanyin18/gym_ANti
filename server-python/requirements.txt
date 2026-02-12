@@ -15,6 +15,7 @@ bcrypt==5.0.0
 httpx==0.28.1
 pydantic==2.12.5
 redis==5.0.1  # Redis Client
+python-multipart          # FastAPI form data and file uploads
 
 # ===== 仍需安装 (补课) =====
 python-jose[cryptography] # JWT 解析
