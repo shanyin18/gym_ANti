@@ -5,7 +5,8 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv(override=True)
+# 保持容器注入环境变量优先，避免 .env 覆盖 docker-compose 的 DB/Milvus 配置
+load_dotenv(override=False)
 
 # ============ 数据库配置 ============
 db_host = os.getenv("DB_HOST", "localhost")

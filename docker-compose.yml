@@ -1,6 +1,9 @@
-version: '3.5'
+version: '3.8'
 
 services:
+  # ====================
+  # 1. 向量数据库 (Milvus)
+  # ====================
   etcd:
     container_name: milvus-etcd
     image: quay.io/coreos/etcd:v3.5.0
@@ -26,7 +29,7 @@ services:
       - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -34,7 +37,7 @@ services:
   standalone:
     container_name: milvus-standalone
     image: milvusdb/milvus:v2.3.0
-    command: ["milvus", "run", "standalone"]
+    command: [ "milvus", "run", "standalone" ]
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
@@ -46,3 +49,79 @@ services:
     depends_on:
       - "etcd"
       - "minio"
+
+  # ====================
+  # 2. 关系型数据库 (PostgreSQL)
+  # ====================
+  postgres:
+    container_name: postgres-db
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-130131}
+      POSTGRES_DB: ${DB_NAME:-littlfish}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/postgres:/var/lib/postgresql/data
+
+  # ====================
+  # 3. 缓存服务 (Redis)
+  # ====================
+  redis:
+    container_name: redis-cache
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/redis:/data
+    command: redis-server --appendonly yes
+
+  # ====================
+  # 4. 后端服务 (FastAPI)
+  # ====================
+  backend:
+    container_name: fastapi-backend
+    build:
+      context: ./server-python
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./server-python:/app
+      - ./事例库.md:/事例库.md
+    env_file:
+      - ./server-python/.env
+    environment:
+      - MILVUS_HOST=standalone
+      - MILVUS_PORT=19530
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # 修改为连接容器内的 Postgres 服务名
+      - DB_HOST=postgres
+      - DB_PORT=5432
+    depends_on:
+      - standalone
+      - redis
+      - postgres
+
+  # ====================
+  # 5. 前端服务 (Vite/React)
+  # ====================
+  frontend:
+    container_name: vite-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5176:5176"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    # 让 Vite 监听所有 IP，不仅仅是 localhost
+    command: npm run dev -- --host 0.0.0.0
+    depends_on:
+      - backend

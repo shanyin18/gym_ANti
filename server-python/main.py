@@ -1,6 +1,7 @@
 """
 FastAPI 主入口
 """
+import asyncio
 from datetime import datetime
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -13,9 +14,8 @@ from database import init_db, create_user_table, append_log, get_history_logs, g
 from auth import init_users_table, register_user, login_user, verify_token
 from profile import init_profiles_table, get_profile, save_profile
 from cache_manager import cache_manager
-from app.services.agent_service import init_agent_service, get_agent_service
-from vector_store import VectorStoreService
-from app.services.pdf_parser import get_pdf_parser
+from agent_service import init_agent_service, get_agent_service
+from pdf_parser import get_pdf_parser
 from prometheus_fastapi_instrumentator import Instrumentator
 
 
@@ -58,10 +58,15 @@ async def lifespan(app: FastAPI):
     await init_users_table()
     await init_profiles_table()
     await cache_manager.init_redis()
-    try:
-        init_agent_service()
-    except Exception as e:
-        print(f"Startup Warning: Agent Service failed to initialize: {e}")
+
+    async def warmup_agent_service():
+        # 后台预热 Agent，避免阻塞服务启动与 /health 探活
+        try:
+            await asyncio.to_thread(init_agent_service)
+        except Exception as e:
+            print(f"Startup Warning: Agent Service warmup failed: {e}")
+
+    asyncio.create_task(warmup_agent_service())
     yield
     # 关闭时
     print("Shutting down...")

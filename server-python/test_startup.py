@@ -6,11 +6,11 @@ output_file = "diag.txt"
 with open(output_file, "w", encoding="utf-8") as f:
     try:
         f.write("Step 1: Importing config...\n"); f.flush()
-        from app.core import config
+        import config
         f.write(f"  Model: {config.doubao_model}\n"); f.flush()
 
         f.write("Step 2: Importing VectorStoreService...\n"); f.flush()
-        from app.services.vector_store import VectorStoreService
+        from vector_store import VectorStoreService
         f.write("  OK\n"); f.flush()
 
         f.write("Step 3: Creating VectorStoreService...\n"); f.flush()
@@ -18,7 +18,7 @@ with open(output_file, "w", encoding="utf-8") as f:
         f.write("  OK\n"); f.flush()
 
         f.write("Step 4: Importing tools...\n"); f.flush()
-        from app.services.tools import DietHistoryTool, KnowledgeBaseTool, CalorieCalculatorTool
+        from tools import DietHistoryTool, KnowledgeBaseTool, CalorieCalculatorTool
         f.write("  OK\n"); f.flush()
 
         f.write("Step 5: Importing LLM...\n"); f.flush()

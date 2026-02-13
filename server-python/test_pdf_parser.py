@@ -9,7 +9,7 @@ import os
 # 添加父目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.services.pdf_parser import PDFParser
+from pdf_parser import PDFParser
 import config
 
 

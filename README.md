@@ -19,7 +19,7 @@
 ### 后端 (Python)
 - **FastAPI** - Web 框架
 - **LangChain** - LLM 编排 (LCEL)
-- **ChromaDB** - 向量数据库
+- **Milvus** - 向量数据库
 - **豆包大模型** - LLM + Embedding
 - **MySQL** - 用户数据存储
 - **JWT** - 身份认证
@@ -91,7 +91,7 @@ gym_ANti/
 │   ├── auth.py               # JWT 认证
 │   ├── profile.py            # 用户档案
 │   ├── database.py           # MySQL 连接
-│   └── chroma_db/            # 向量数据库存储
+│   └── vector_store.py       # Milvus 向量数据库服务
 ├── 事例库.md                  # RAG 知识库文档
 └── README.md
 ```

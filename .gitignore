@@ -38,6 +38,7 @@ build/
 !.vscode/extensions.json
 .idea
 .DS_Store
+desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
@@ -50,3 +51,16 @@ coverage/
 # 临时文件
 *.log
 .cache/
+
+# Docker / runtime data
+volumes/
+
+# Performance / diagnostics artifacts
+server-python/performance/locust_report_*.csv
+server-python/performance/profile.svg
+server-python/diag*.txt
+server-python/startup_result.txt
+server-python/evaluation/eval_report.json
+
+# PDF extracted images (Unstructured)
+pdf_images/
